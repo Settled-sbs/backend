@@ -7,5 +7,18 @@ wheels/
 *.egg-info
 
 # Virtual environments
-.venv
-node_modules
+.venv/
+node_modules/
+
+# Local environment files
+.env
+.env.*
+
+# FastAPI app: exclude from the Ape-only GitHub export
+app/
+scripts/
+
+# Local/editor artifacts
+.pytest_cache/
+.build/
+.vscode/
