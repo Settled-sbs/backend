@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settled — Agent Firewall</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tailwindcss/browser@4"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+        body { font-family: 'JetBrains Mono', monospace; background: #020617; }
+        .scanline {
+            background: linear-gradient(to bottom, rgba(255,255,255,0), rgba(255,255,255,0) 50%, rgba(0,0,0,0.1) 50%, rgba(0,0,0,0.1));
+            background-size: 100% 4px; pointer-events: none;
+        }
+        .terminal-scroll::-webkit-scrollbar { width: 3px; }
+        .terminal-scroll::-webkit-scrollbar-track { background: transparent; }
+        .terminal-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+        @keyframes pulse-border { 0%,100% { border-color: #1e293b; } 50% { border-color: #6366f1; } }
+        .active-pulse { animation: pulse-border 2s ease-in-out infinite; }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4 text-slate-300">
+
+    <div class="scanline fixed inset-0 z-50"></div>
+
+    <div class="w-full max-w-md space-y-4">
+
+        <div class="text-center space-y-1">
+            <h1 class="text-2xl font-bold text-white tracking-tight">SETTLED</h1>
+            <p class="text-[10px] text-slate-500 uppercase tracking-[0.3em]">Autonomous Agent Firewall</p>
+        </div>
+
+        <div id="main-card" class="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden shadow-2xl shadow-indigo-950/20">
+
+            <div class="flex items-center justify-between px-4 py-2 bg-slate-900/50 border-b border-slate-800 text-[10px] uppercase tracking-wider">
+                <span id="status-indicator" class="flex items-center gap-2">
+                    <span class="w-1.5 h-1.5 rounded-full bg-slate-600"></span>
+                    <span class="text-slate-500">Standby</span>
+                </span>
+                <span class="text-slate-600">Avalanche Fuji</span>
+            </div>
+
+            <div id="auth-panel" class="p-4 space-y-3">
+
+                <div id="login-form" class="space-y-3">
+                    <div class="text-center py-4">
+                        <p class="text-xs text-slate-500 mb-3">Connect wallet to continue</p>
+                        <button id="connect-wallet"
+                            class="bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs uppercase tracking-wider py-2.5 px-6 rounded transition-colors cursor-pointer">
+                            Connect Wallet
+                        </button>
+                    </div>
+                </div>
+
+                <div id="dashboard" class="hidden space-y-4">
+
+                    <div class="bg-slate-900/50 rounded border border-slate-800 p-3 space-y-2 text-[11px]">
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500">Wallet</span>
+                            <span id="wallet-addr" class="text-indigo-400 font-bold truncate max-w-[180px]"></span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500">Filter</span>
+                            <span class="text-emerald-400 text-[10px]">Active</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-slate-500">Daily Limit</span>
+                            <span id="daily-limit" class="text-slate-300">$0 / $5,000</span>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2">
+                        <button id="trigger-rebal"
+                            class="bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs uppercase tracking-wider py-3 rounded transition-colors cursor-pointer">
+                            Rebalance
+                        </button>
+                        <button id="trigger-rebase"
+                            class="bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs uppercase tracking-wider py-3 rounded transition-colors cursor-pointer">
+                            Rebase Check
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-3 gap-2 text-center">
+                        <div class="bg-slate-900/30 rounded p-2 border border-slate-800/50">
+                            <div class="text-[10px] text-slate-500 uppercase">USDC</div>
+                            <div id="usdc-bal" class="text-xs font-bold text-white mt-0.5">--</div>
+                        </div>
+                        <div class="bg-slate-900/30 rounded p-2 border border-slate-800/50">
+                            <div class="text-[10px] text-slate-500 uppercase">RWA</div>
+                            <div id="rwa-bal" class="text-xs font-bold text-white mt-0.5">--</div>
+                        </div>
+                        <div class="bg-slate-900/30 rounded p-2 border border-slate-800/50">
+                            <div class="text-[10px] text-slate-500 uppercase">Guard</div>
+                            <div class="text-xs font-bold text-emerald-400 mt-0.5">PASS</div>
+                        </div>
+                    </div>
+
+                    <button id="logout"
+                        class="w-full text-[10px] text-slate-500 hover:text-slate-400 uppercase tracking-wider underline py-1 cursor-pointer transition-colors">
+                        Terminate Session
+                    </button>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-800 bg-black/30">
+                <div class="flex items-center justify-between px-3 py-1.5 border-b border-slate-800/50">
+                    <span class="text-[9px] text-slate-500 uppercase tracking-wider font-bold">Event Stream</span>
+                    <span class="text-[9px] text-slate-600">Live</span>
+                </div>
+                <div id="terminal" class="h-36 overflow-y-auto p-3 space-y-1 text-[11px] terminal-scroll">
+                    <div class="text-slate-600">[00:00:00] [SYS] Firewall initialized. Awaiting operator...</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center text-[10px] text-slate-600 space-y-1">
+            <p>EVM-Level Delta Enforcement</p>
+            <p class="text-slate-700">RWA out → USDC in. Atomic. Immutable.</p>
+        </div>
+    </div>
+
+    <!-- Ethers.js for blockchain interaction -->
+    <script src="https://cdn.jsdelivr.net/npm/ethers@6.13.0/dist/ethers.umd.min.js"></script>
+
+    <script>
+        // ============================================
+        // CONFIG
+        // ============================================
+        const CFG = {
+            API_URL: 'http://localhost:8001',
+            FILTER: '0x...',
+            CHAIN_ID: 43113,
+            USDC: '0xC5A95b9fCFe23D6C3F899679f9854CBF30229f16',
+            RWA: '0xF5285C16939f09cB7A02dBc97248D80e394F8De9'
+        }
+
+        // ============================================
+        // STATE
+        // ============================================
+        let provider = null
+        let signer = null
+        let userAddress = null
+
+        // ============================================
+        // UI HELPERS
+        // ============================================
+        const $ = id => document.getElementById(id)
+
+        function log(type, msg) {
+            const colors = {
+                sys: 'text-slate-500',
+                info: 'text-indigo-400',
+                ok: 'text-emerald-400',
+                err: 'text-rose-400',
+                warn: 'text-amber-400'
+            }
+            const t = new Date().toLocaleTimeString('en-US', {
+                hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit'
+            })
+            const div = document.createElement('div')
+            div.className = colors[type] || 'text-slate-400'
+            div.innerText = `[${t}] [${type.toUpperCase()}] ${msg}`
+            $('terminal').appendChild(div)
+            $('terminal').scrollTop = $('terminal').scrollHeight
+        }
+
+        function setStatus(state, text) {
+            const colors = {
+                standby: 'bg-slate-600',
+                active: 'bg-emerald-500',
+                warn: 'bg-amber-500',
+                error: 'bg-rose-500'
+            }
+            const dot = colors[state] || 'bg-slate-600'
+            $('status-indicator').innerHTML = `
+                <span class="w-1.5 h-1.5 rounded-full ${dot} ${state === 'active' ? 'animate-pulse' : ''}"></span>
+                <span class="${state === 'active' ? 'text-emerald-400' : 'text-slate-500'}">${text}</span>
+            `
+        }
+
+        // ============================================
+        // WALLET CONNECTION (MetaMask / WalletConnect / etc.)
+        // ============================================
+        $('connect-wallet').onclick = async () => {
+    if (!window.ethereum) {
+        log('err', 'No wallet detected. Install MetaMask.')
+        return
+    }
+
+    try {
+        log('info', 'Requesting wallet connection...')
+
+        const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' })
+        if (!accounts || accounts.length === 0) {
+            log('err', 'No accounts returned')
+            return
+        }
+
+        userAddress = accounts[0]
+        provider = new ethers.BrowserProvider(window.ethereum)
+        signer = await provider.getSigner()
+
+        // Check and fix chain
+        const network = await provider.getNetwork()
+        const chainId = Number(network.chainId)
+
+        
+       if (chainId !== CFG.CHAIN_ID) {
+    log('warn', `Wrong chain: ${chainId}. Need Fuji (43113).`)
+    
+    try {
+        await window.ethereum.request({
+            method: 'wallet_addEthereumChain',
+            params: [{
+                chainId: '0xA869',  // 43113 in hex
+                chainName: 'Avalanche Fuji Testnet',
+                nativeCurrency: { name: 'AVAX', symbol: 'AVAX', decimals: 18 },
+                rpcUrls: ['https://api.avax-test.network/ext/bc/C/rpc'],
+                blockExplorerUrls: ['https://testnet.snowtrace.io']
+            }]
+        })
+    } catch (e) {
+        // Already added
+    }
+    
+    await window.ethereum.request({
+        method: 'wallet_switchEthereumChain',
+        params: [{ chainId: '0xA869' }]
+    })
+    
+    log('ok', 'Switched to Avalanche Fuji')
+}
+
+        // Refresh provider after switch
+        provider = new ethers.BrowserProvider(window.ethereum)
+        signer = await provider.getSigner()
+
+        // Show dashboard
+        $('login-form').classList.add('hidden')
+        $('dashboard').classList.remove('hidden')
+        $('main-card').classList.add('active-pulse')
+
+        $('wallet-addr').innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`
+        log('ok', `Connected: ${userAddress.slice(0, 10)}...`)
+        setStatus('active', 'Connected')
+
+        await fetchBalances()
+
+        window.ethereum.on('accountsChanged', (newAccounts) => {
+            if (newAccounts.length === 0) {
+                disconnect()
+            } else {
+                userAddress = newAccounts[0]
+                $('wallet-addr').innerText = `${userAddress.slice(0, 6)}...${userAddress.slice(-4)}`
+                log('info', `Account changed: ${userAddress.slice(0, 10)}...`)
+            }
+        })
+
+    } catch (e) {
+        log('err', `Connection failed: ${e.message}`)
+    }
+}
+        // ============================================
+        // BALANCES
+        // ============================================
+        async function fetchBalances() {
+            if (!provider || !userAddress) return
+
+            try {
+                // USDC balance
+                const usdcContract = new ethers.Contract(
+                    CFG.USDC,
+                    ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
+                    provider
+                )
+                const usdcBal = await usdcContract.balanceOf(userAddress)
+                const usdcDec = await usdcContract.decimals()
+                $('usdc-bal').innerText = (Number(usdcBal) / 10 ** Number(usdcDec)).toFixed(2)
+
+                // RWA balance (if deployed)
+                if (CFG.RWA && CFG.RWA !== '0x...') {
+                    const rwaContract = new ethers.Contract(
+                        CFG.RWA,
+                        ['function balanceOf(address) view returns (uint256)', 'function decimals() view returns (uint8)'],
+                        provider
+                    )
+                    const rwaBal = await rwaContract.balanceOf(userAddress)
+                    const rwaDec = await rwaContract.decimals()
+                    $('rwa-bal').innerText = (Number(rwaBal) / 10 ** Number(rwaDec)).toFixed(2)
+                } else {
+                    $('rwa-bal').innerText = '---'
+                }
+
+            } catch (e) {
+                log('warn', `Balance fetch failed: ${e.message}`)
+            }
+        }
+
+        // ============================================
+        // AGENT EXECUTION
+        // ============================================
+        async function executeAction(actionType) {
+            if (!signer || !userAddress) {
+                log('err', 'No wallet connected')
+                return
+            }
+
+            try {
+                log('info', `${actionType.toUpperCase()}: Fetching proposal...`)
+
+                const res = await fetch(`${CFG.API_URL}/agent/${actionType}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        wallet: userAddress,
+                        timestamp: Date.now()
+                    })
+                })
+
+                if (!res.ok) throw new Error(`Backend: ${res.status}`)
+                const proposal = await res.json()
+
+                log('info', `Routing through SettledDeltaFilter...`)
+
+                // Send transaction via ethers (use proposal target/value and ensure calldata is hex)
+                let calldata = proposal.calldata
+                try {
+                    if (typeof calldata !== 'string') {
+                        calldata = ethers.hexlify(calldata)
+                    } else if (!calldata.startsWith('0x')) {
+                        calldata = ethers.hexlify(calldata)
+                    }
+                } catch (e) {
+                    log('warn', `Calldata normalization failed: ${e.message}`)
+                }
+
+                const target = proposal.target || CFG.FILTER
+
+                // Preflight checks: ensure target has contract code and simulate the call to surface revert reason
+                try {
+                    const code = await provider.getCode(target)
+                    if (!code || code === '0x') {
+                        log('err', `No contract deployed at target: ${target}`)
+                        return
+                    }
+                } catch (e) {
+                    log('warn', `getCode failed: ${e.message}`)
+                }
+
+                try {
+                    // Simulate the call to get revert reason if any
+                    await provider.call({ to: target, data: calldata, from: userAddress })
+                } catch (simErr) {
+                    // Try to log revert data / message
+                    const msg = simErr?.error?.message || simErr?.message || JSON.stringify(simErr)
+                    log('err', `Simulation failed: ${msg}`)
+                    return
+                }
+
+                const tx = await signer.sendTransaction({
+                    to: target,
+                    data: calldata,
+                    value: proposal.value ? BigInt(proposal.value) : 0n
+                })
+
+                log('ok', `Submitted: ${tx.hash.slice(0, 16)}...`)
+                log('info', 'Awaiting EVM verdict...')
+
+                // Wait for receipt
+                const receipt = await tx.wait()
+
+                if (receipt && receipt.status === 1) {
+                    log('ok', `Confirmed — Delta guard passed (block ${receipt.blockNumber})`)
+                    await fetchBalances()
+                } else {
+                    log('err', 'REVERTED — Delta guard blocked bad tx')
+                }
+
+            } catch (e) {
+                log('err', e.message)
+            }
+        }
+
+        $('trigger-rebal').onclick = () => executeAction('rebalance')
+        $('trigger-rebase').onclick = () => executeAction('rebase')
+
+        // ============================================
+        // DISCONNECT
+        // ============================================
+        function disconnect() {
+            provider = null
+            signer = null
+            userAddress = null
+
+            $('dashboard').classList.add('hidden')
+            $('login-form').classList.remove('hidden')
+            $('main-card').classList.remove('active-pulse')
+
+            setStatus('standby', 'Standby')
+            log('sys', 'Disconnected')
+        }
+
+        $('logout').onclick = disconnect
+
+        // ============================================
+        // STARTUP
+        // ============================================
+        log('sys', 'Settled Protocol initialized')
+        log('info', 'Click "Connect Wallet" to begin')
+
+        // Check if already connected
+        if (window.ethereum) {
+            window.ethereum.request({ method: 'eth_accounts' }).then(accounts => {
+                if (accounts && accounts.length > 0) {
+                    // Auto-connect
+                    $('connect-wallet').click()
+                }
+            })
+        }
+    </script>
+</body>
+</html>

@@ -1,0 +1,16 @@
+[project]
+name = "settled"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.11,<3.12"
+dependencies = [
+    "ape-avalanche>=0.8.1",
+    "ape-solidity>=0.8.6",
+    "ape-vyper>=0.8.10",
+    "eth-ape>=0.8.48",
+    "fastapi>=0.135.2",
+    "jinja2>=3.1.6",
+    "uvicorn>=0.48.0",
+    "vyper>=0.4.3",
+]

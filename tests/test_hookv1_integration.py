@@ -52,7 +52,7 @@ def account(owner, hook, token, payable_target):
             MAX_SPEND_TOTAL,
             [
                 token.address,
-                payable_target,
+                payable_target.address,
                 ZERO_ADDRESS,
                 ZERO_ADDRESS,
             ],
