@@ -30,7 +30,12 @@ def token(owner):
 
 
 @pytest.fixture
-def account(owner, hook, token):
+def payable_target(owner):
+    return project.MockPayableTarget.deploy(sender=owner)
+
+
+@pytest.fixture
+def account(owner, hook, token, payable_target):
     mock = project.Mock7579Account.deploy(
         hook.address,
         sender=owner,
@@ -47,7 +52,7 @@ def account(owner, hook, token):
             MAX_SPEND_TOTAL,
             [
                 token.address,
-                ZERO_ADDRESS,
+                payable_target,
                 ZERO_ADDRESS,
                 ZERO_ADDRESS,
             ],
@@ -162,3 +167,24 @@ def test_cumulative_spend_limit_reverts(
     assert hook.getConfig(account.address)[6] == 150
     assert token.balanceOf(account.address) == 850
     assert token.balanceOf(recipient.address) == 150
+
+
+def test_native_value_is_not_included_in_spend_accounting(
+    hook, account, payable_target, owner
+):
+    native_value = MAX_SPEND_PER_TX + 1
+
+    tx = account.execute(
+        payable_target.address,
+        native_value,
+        payable_target.receiveValue.encode_input(),
+        sender=owner,
+        value=native_value,
+    )
+
+    assert tx.status == 1
+    assert payable_target.totalReceived() == native_value
+
+    # Native value was transferred, but tracked-token spending
+    # accounting did not change.
+    assert hook.getConfig(account.address)[6] == 0
