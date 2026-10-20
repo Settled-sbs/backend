@@ -13,6 +13,7 @@ node_modules/
 # Local environment files
 .env
 .env.*
+uv.*
 
 # FastAPI app: exclude from the Ape-only GitHub export
 app/
